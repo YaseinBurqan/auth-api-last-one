@@ -1,13 +1,11 @@
 "use strict";
 
 const express = require("express");
-const dataModules = require("../models/index-models");
-const usersCollection = require("../models/data-collection");
-const bearer = require("../middleware/bearer");
+const dataModules = require("../models/index.model");
 
-const routerV1 = express.Router();
+const router = express.Router();
 
-routerV1.param("model", (req, res, next) => {
+router.param("model", (req, res, next) => {
   const modelName = req.params.model;
   if (dataModules[modelName]) {
     req.model = dataModules[modelName];
@@ -17,46 +15,40 @@ routerV1.param("model", (req, res, next) => {
   }
 });
 
-routerV1.get("/:model", bearer, handleGetAll);
-routerV1.get("/:model/:id", bearer, handleGetOne);
-routerV1.post("/:model", bearer, handleCreate);
-routerV1.put("/:model/:id", bearer, handleUpdate);
-routerV1.delete("/:model/:id", bearer, handleDelete);
+router.get("/:model", handleGetAll);
+router.get("/:model/:id", handleGetOne);
+router.post("/:model", handleCreate);
+router.put("/:model/:id", handleUpdate);
+router.delete("/:model/:id", handleDelete);
 
 async function handleGetAll(req, res) {
-  let allRecords = await usersCollection.readRecord();
+  let allRecords = await req.model.get();
   res.status(200).json(allRecords);
 }
 
 async function handleGetOne(req, res) {
   const id = req.params.id;
-  let theRecord = await usersCollection.readRecord(id);
+  let theRecord = await req.model.get(id);
   res.status(200).json(theRecord);
 }
 
 async function handleCreate(req, res) {
   let obj = req.body;
-  let newRecord = await usersCollection.createRecord(obj);
+  let newRecord = await req.model.create(obj);
   res.status(201).json(newRecord);
 }
 
 async function handleUpdate(req, res) {
   const id = req.params.id;
   const obj = req.body;
-  let foundId = await usersCollection.readRecord(id);
-
-  if (foundId) {
-    let updatedObj = await usersCollection.updateRecord(obj);
-    res.status(201).json(updatedObj);
-  } else {
-    res.status(404).json({ message: "Object not found" });
-  }
+  let updatedRecord = await req.model.update(id, obj);
+  res.status(201).json(updatedRecord);
 }
 
 async function handleDelete(req, res) {
   let id = req.params.id;
-  let deletedRecord = await usersCollection.deleteRecord(id);
+  let deletedRecord = await req.model.delete(id);
   res.status(204).json(deletedRecord);
 }
 
-module.exports = routerV1;
+module.exports = router;

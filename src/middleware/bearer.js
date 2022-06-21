@@ -1,19 +1,21 @@
-"use strict";
+'use strict';
 
-const { users } = require("../models/index-models");
+const {Users} = require("../models/index.model");
 
-module.exports = async (req, res, next) => {
-  try {
-    if (!req.headers.authorization) {
-      next("Invalid Login , Token Invalid");
-    }
-
-    const token = req.headers.authorization.split(" ").pop();
-    const validUser = await users.authenticateToken(token);
-    req.user = validUser;
-    next();
-  } catch (e) {
-    console.error(e);
-    res.status(403).send("Invalid Login");
+async function bearer(req, res, next) {
+  if (req.headers.authorization) {
+      console.log(req.headers.authorization);
+      const bearerToken = req.headers.authorization.split(" ")[1];
+      Users.authenticateBearer(bearerToken)
+          .then((userData) => {
+              req.user = userData;
+              next();
+          })
+          .catch(() => {
+              res.status(403);
+              res.send("Invalid Signin");
+          })
   }
-};
+}
+
+module.exports = bearer;
