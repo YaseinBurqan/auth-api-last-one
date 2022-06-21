@@ -1,31 +1,23 @@
 "use strict";
 
+require("dotenv").config();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const userSchema = (sequelize, DataTypes) => {
+const SECRET = process.env.API_SECRET || "yasein";
+
+const UserModel = (sequelize, DataTypes) => {
   const model = sequelize.define("yasein", {
-    username: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    role: {
-      type: DataTypes.ENUM("admin", "writer", "editor", "user"),
-      defaultValue: "user",
-    },
+    username: { type: DataTypes.STRING, required: true, unique: true },
+    password: { type: DataTypes.STRING, required: true },
+    role: { type: DataTypes.ENUM("user", "writer", "editor", "admin"), required: true, defaultValue: "user" },
     token: {
       type: DataTypes.VIRTUAL,
       get() {
-        return jwt.sign(
-          {
-            username: this.username,
-          },
-          process.env.SECRET
-        );
+        return jwt.sign({ username: this.username }, SECRET);
+      },
+      set(tokenObj) {
+        let token = jwt.sign(tokenObj, SECRET);
+        return token;
       },
     },
     actions: {
@@ -42,28 +34,22 @@ const userSchema = (sequelize, DataTypes) => {
     },
   });
 
-  model.beforeCreate(async (user) => {
-    let hashedPass = await bcrypt.hash(user.password, 10);
-    user.password = hashedPass;
-  });
-
-  // Basic AUTH: Validating strings (username, password)
   model.authenticateBasic = async function (username, password) {
-    const user = await this.findOne({
-      username,
-    });
+    const user = await this.findOne({ where: { username: username } });
     const valid = await bcrypt.compare(password, user.password);
-    if (valid) {
+
+    if (!valid) {
+      console.log("hi");
       return user;
     }
     throw new Error("Invalid User");
   };
 
-  // Bearer AUTH: Validating a token
-  model.authenticateToken = async function (token) {
+  model.authenticateBearer = async function (token) {
     try {
-      const parsedToken = jwt.verify(token, process.env.SECRET);
+      const parsedToken = jwt.verify(token, SECRET);
       const user = this.findOne({ where: { username: parsedToken.username } });
+      
       if (user) {
         return user;
       }
@@ -76,4 +62,4 @@ const userSchema = (sequelize, DataTypes) => {
   return model;
 };
 
-module.exports = userSchema;
+module.exports = UserModel;

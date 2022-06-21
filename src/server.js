@@ -1,48 +1,44 @@
 "use strict";
-
 require("dotenv").config();
-const PORT = process.env.PORT || 5000;
-
-const logger = require("./middleware/logger");
 const express = require("express");
 const app = express();
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
-app.get("/", (req, res) => {
-  res.status(200).send("server is working on home page");
-});
+const notFoundHandler = require("./handlers/404");
+const errorHandler = require("./handlers/500");
 
-const signInRoutes = require("./routes/signIn");
-const signUpRoutes = require("./routes/signUp");
-app.use(signInRoutes);
-app.use(signUpRoutes);
+const aclRouter = require("./routes/acl.route");
 
+const signInRouter = require("./routes/signin");
+const signUpRouter = require("./routes/signup");
 const secretRouter = require("./routes/secret");
-const getUsersRouter = require("./routes/getUsers");
+const getUsersRouters = require("./routes/allUsers");
+
+app.get("/", handleHome);
+
+const v1 = require("./routes/v1");
+const v2 = require("./routes/v2");
+
+app.use(express.json());
+app.use(signInRouter);
+app.use(signUpRouter);
 app.use(secretRouter);
-app.use(getUsersRouter);
+app.use(getUsersRouters);
+app.use(aclRouter);
 
-const foodRoutes = require("./routes/food");
-const clothesRoutes = require("./routes/clothes");
+app.use("/api/v1", v1);
+app.use("/api/v2", v2);
 
-app.use(foodRoutes);
-app.use(clothesRoutes);
+function handleHome(req, res) {
+  res.send("welcome to heroku auth-api server");
+}
 
-const notAuthRouter = require("../src/routes/v1");
-const authRouter = require("../src/routes/v2");
-app.use("/api/v1", notAuthRouter);
-app.use("/api/v2", authRouter);
-
-const notFoundHandler = require("./error-handlers/404");
-const errorHandler = require("./error-handlers/500");
 app.use("*", notFoundHandler);
 app.use(errorHandler);
 
-app.use(logger);
-
-function start(PORT) {
+function start() {
   app.listen(PORT, () => {
-    console.log(`Listen on port ${PORT}`);
+    console.log(`Listen and Running on port ${PORT}`);
   });
 }
 
